@@ -1,0 +1,17 @@
+{% extends 'flatpages/default.html' %}
+
+{% block title %}
+News
+{% endblock title %}
+
+{% block content %}
+<h1>Новости и статьи</h1>
+{% for post in news %}
+    <a href="{% url 'post_detail' post.pk %}">{{ post.title }}</a>
+    <p>{{ post.dateCreation }}</p>
+    <p>{{ post.text|truncatechars:20 }}</p>
+    <hr>
+{% empty %}
+    <p>Нет новостей.</p>
+{% endfor %}
+{% endblock content %}
