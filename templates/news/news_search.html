@@ -1,0 +1,13 @@
+{% extends 'flatpages/default.html' %}
+
+{% block title %}
+Search News
+{% endblock title %}
+
+{% block content %}
+<h1>Search News</h1>
+
+<form method="get">
+    {{ filterset.form.as_p }}
+    <button type="submit">Search</button>
+</form>

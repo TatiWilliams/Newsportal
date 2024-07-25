@@ -1,91 +1,93 @@
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.models import Group
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views.generic import (ListView, TemplateView, CreateView, UpdateView, DeleteView, DetailView)
-from django.views import generic
-from .models import Post
 from .filters import PostFilter
-from django.shortcuts import render, get_object_or_404, redirect
-from .forms import PostForm
+from .forms import NewsForm
+from django.views import generic
+
+from django.views.decorators.csrf import csrf_protect
+from .models import Post, Category
 
 
-def create_news(request):
-    if request.method == 'POST':
-        form = PostForm(request.POST)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.categoryType = 'NW'
-            post.save()
-            return redirect('news_list')
-    else:
-        form = PostForm()
-    return render(request, 'flatpages/create_news.html', {'form': form})
+class NewsList(ListView):
+    model = Post
+    ordering = '-date'
+    template_name = 'news/news_list.html'
+    context_object_name = 'news_list'
+    paginate_by = 5
 
 
-def delete_news(request, pk):
-    news = get_object_or_404(Post, pk=pk, categoryType='NW')
-    if request.method == 'POST':
-        news.delete()
-        return redirect('news_list')
-    return render(request, 'flatpages/delete_news.html', {'news': news})
+class NewsDetails(LoginRequiredMixin, DetailView):
+    model = Post
+    template_name = 'news/news_details.html'
+    context_object_name = 'news_post'
 
 
-def edit_news(request, pk):
-    news = get_object_or_404(Post, pk=pk, categoryType='NW')
-    if request.method == 'POST':
-        form = PostForm(request.POST, instance=news)
-        if form.is_valid():
-            form.save()
-            return redirect('news_detail', pk=news.pk)
-    else:
-        form = PostForm(instance=news)
-    return render(request, 'flatpages/edit_news.html', {'form': form})
+class NewsSearch(LoginRequiredMixin, ListView):
+    model = Post
+    template_name = 'news/news_search.html'
+    context_object_name = 'posts'
+    ordering = ['-date']
+    paginate_by = 2
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        self.filterset = PostFilter(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['filter'] = self.filterset
+        context['is_not_author'] = not self.request.user.groups.filter(name='authors').exists()
+        return context
 
 
-def create_article(request):
-    if request.method == 'POST':
-        form = PostForm(request.POST)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.categoryType = 'AR'
-            post.save()
-            return redirect('article_list')
-    else:
-        form = PostForm()
-    return render(request, 'flatpages/create_article.html', {'form': form})
+class NewsCreateView(PermissionRequiredMixin, CreateView):
+    permission_required = ('news.add_post',)
+    template_name = 'news/news_create.html'
+    form_class = NewsForm
 
 
-def delete_article(request, pk):
-    article = get_object_or_404(Post, pk=pk, categoryType='AR')
-    if request.method == 'POST':
-        article.delete()
-        return redirect('article_list')
-    return render(request, 'flatpages/delete_article.html', {'news': article})
+class NewsUpdateView(PermissionRequiredMixin, UpdateView):
+    permission_required = ('news.change_post',)
+    template_name = 'news/news_create.html'
+    form_class = NewsForm
+
+    def get_object(self, **kwargs):
+        id = self.kwargs.get('pk')
+        return get_object_or_404(Post, pk=id)
 
 
-def edit_article(request, pk):
-    article = get_object_or_404(Post, pk=pk, categoryType='AR')
-    if request.method == 'POST':
-        form = PostForm(request.POST, instance=article)
-        if form.is_valid():
-            form.save()
-            return redirect('article_detail', pk=article.pk)
-    else:
-        form = PostForm(instance=article)
-    return render(request, 'flatpages/edit_article.html', {'form': form})
+class NewsDeleteView(DeleteView):
+    model = Post
+    template_name = 'news/news_delete.html'
+    success_url = reverse_lazy('news_list')
+
+
+@login_required
+@csrf_protect
+def subscribe(request, pk):
+    user = request.user
+    category = get_object_or_404(Category, id=pk)
+    category.subscribers.add(user)
+    message = 'Вы успешно подписались на рассылку новостей'
+    return render(request, 'news/subscribe.html', {'category': category, 'message': message})
 
 
 class PostEdit(PermissionRequiredMixin, UpdateView):
     model = Post
-    form_class = PostForm
+    form_class = NewsForm
     template_name = 'flatpages/edit_news.html'
     success_url = reverse_lazy('news_list')
 
     def get_success_url(self):
         post = self.get_object()
-        if post.categoryType == 'NW':
+        if post.post_type == 'NW':
             return reverse_lazy('news_detail', kwargs={'pk': post.pk})
-        elif post.categoryType == 'AR':
+        elif post.post_type == 'AR':
             return reverse_lazy('article_detail', kwargs={'pk': post.pk})
         return super().get_success_url()
 
@@ -97,14 +99,12 @@ class PostDelete(PermissionRequiredMixin, DeleteView):
 
     def get_success_url(self):
         post = self.get_object()
-        if post.categoryType == 'NW':
+        if post.post_type == 'NW':
             return reverse_lazy('news_list')
-        elif post.categoryType == 'AR':
+        elif post.post_type == 'AR':
             return reverse_lazy('article_list')
         return super().get_success_url()
 
-
-# Existing class-based views
 
 class HomePageView(TemplateView):
     template_name = "flatpages/home.html"
@@ -116,7 +116,7 @@ class AboutPageView(TemplateView):
 
 class NewsPageView(ListView):
     model = Post
-    ordering = '-dateCreation'
+    ordering = '-date'
     template_name = "flatpages/news.html"
     context_object_name = 'news'
     paginate_by = 10
@@ -135,26 +135,33 @@ class PostDetailView(generic.DetailView):
     context_object_name = 'post'
 
 
-class NewsSearchView(ListView):
+class PostCreate(PermissionRequiredMixin, CreateView):
+    raise_exception = True
+    form_class = NewsForm
     model = Post
-    template_name = 'flatpages/news_search.html'
-    context_object_name = 'news_list'
-    paginate_by = 10
-    filterset = PostFilter
+    template_name = 'flatpages/edit_news.html'
+
+
+def upgrade_me(request):
+    user = request.user
+    premium_group = Group.objects.get(name='authors')
+    if not request.user.groups.filter(name='authors').exists():
+        premium_group.user_set.add(user)
+    return redirect('/news')
+
+
+class CategoryListView(NewsList):
+    model = Post
+    template_name = 'news/category_list.html'
+    context_object_name = 'category_news_list'
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        self.filterset = PostFilter(self.request.GET, queryset=queryset)
-        return self.filterset.qs.distinct()
+        self.category = get_object_or_404(Category, id=self.kwargs['pk'])
+        queryset = Post.objects.filter(category=self.category).order_by('-date')
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['filterset'] = self.filterset
+        context['is_not_subscriber'] = self.request.user not in self.category.subscribers.all()
+        context['category'] = self.category
         return context
-
-
-class PostCreate(PermissionRequiredMixin, CreateView):
-    raise_exception = True
-    form_class = PostForm
-    model = Post
-    template_name = 'flatpages/edit_news.html'

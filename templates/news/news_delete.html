@@ -1,0 +1,17 @@
+{% extends 'flatpages/default.html' %}
+
+{% block title %}
+Delete News
+{% endblock title %}
+
+{% block content %}
+<h1>Delete News</h1>
+
+<p>Are you sure you want to delete the news article: "{{ object.title }}"?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit">Yes, delete</button>
+    <a href="{% url 'news_details' object.pk %}">Cancel</a>
+</form>
+{% endblock content %}

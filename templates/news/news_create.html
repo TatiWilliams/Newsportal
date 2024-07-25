@@ -1,10 +1,15 @@
 {% extends 'flatpages/default.html' %}
 
+{% block title %}
+Create News
+{% endblock title %}
+
 {% block content %}
-  <h2>Create Article</h2>
-  <form method="post">
+<h1>Create News</h1>
+
+<form method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Create</button>
-  </form>
-{% endblock %}
+</form>
+{% endblock content %}

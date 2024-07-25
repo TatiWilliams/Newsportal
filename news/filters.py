@@ -13,6 +13,6 @@ class PostFilter(FilterSet):
 
         fields = {
              'title': [ 'iexact'],
-             'categoryType': ['exact'],
-             'dateCreation': ['gte', 'lte', 'exact'],
+             'post_type': ['exact'],
+             'date': ['gte', 'lte', 'exact'],
     }

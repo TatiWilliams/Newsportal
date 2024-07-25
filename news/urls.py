@@ -1,20 +1,15 @@
 from django.urls import path
-from .views import AboutPageView, NewsPageView, PostDetailView, NewsSearchView, create_news, delete_news, \
-    edit_news, create_article, delete_article, edit_article, PostCreate, PostEdit, PostDelete
+from .views import NewsList, NewsDetails, NewsSearch, NewsCreateView, NewsUpdateView, NewsDeleteView, upgrade_me, \
+    CategoryListView, subscribe
 
 urlpatterns = [
-    path("", NewsPageView.as_view(), name="news"),
-    path("<int:pk>/", PostDetailView.as_view(), name="post_detail"),
-    path("about/", AboutPageView.as_view(), name="about"),
-
-    path('search/', NewsSearchView.as_view(), name='news_search'),
-    path('news/create/', create_news, name='create_news'),
-    path('news/<int:pk>/edit/', edit_news, name='edit_news'),
-    path('create/', PostCreate.as_view(), name='post_create'),
-    path('edit/', PostEdit.as_view(), name='post_edit'),
-    path('delete/', PostDelete.as_view(), name='post_delete'),
-    path('news/<int:pk>/delete/', delete_news, name='delete_news'),
-    path('articles/create/', create_article, name='create_article'),
-    path('articles/<int:pk>/edit/', edit_article, name='edit_article'),
-    path('articles/<int:pk>/delete/', delete_article, name='delete_article'),
+    path('', NewsList.as_view(), name='news_list'),
+    path('<int:pk>/', NewsDetails.as_view(), name='news_details'),
+    path('search/', NewsSearch.as_view(), name='news_search'),
+    path('add/', NewsCreateView.as_view(), name='news_create'),
+    path('<int:pk>/edit', NewsUpdateView.as_view(), name='news_update'),
+    path('<int:pk>/delete', NewsDeleteView.as_view(), name='news_delete'),
+    path('upgrade/', upgrade_me, name='upgrade'),
+    path('categories/<int:pk>', CategoryListView.as_view(), name='category_list'),
+    path('categories/<int:pk>/subscribe', subscribe, name='subscribe'),
 ]
